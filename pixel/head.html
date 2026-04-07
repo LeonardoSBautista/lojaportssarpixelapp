@@ -1,0 +1,672 @@
+<link rel="icon" type="image/x-icon" href="https://escariz.vtexassets.com/arquivos/favicon.svg" />
+<meta name="google-site-verification" content="kFEEg0_GHWlIj83ngpjbvn_euEM_E14GMcpEyQ5826A" />
+
+<script>
+// LGPD para GTM - Execução imediata ao carregar o documento
+(function() {
+    'use strict';
+    
+    // Configurações - MODIFIQUE AQUI SE NECESSÁRIO
+    var LGPD_CONFIG = {
+        cookieName: 'lgpd_consent_gtm',
+        cookieExpiryDays: 5,
+        barColor: '#ffffff',
+        textColor: '#2b2b2b',
+        buttonAcceptColor: '#c00913',
+        buttonRejectColor: '#e53e3e',
+        debug: false // Ative para ver logs no console
+    };
+    
+    // Log de depuração
+    function logDebug(message) {
+        if (LGPD_CONFIG.debug) {
+            console.log('[LGPD-GTM]', message);
+        }
+    }
+    
+    // Funções de gerenciamento de cookies
+    var CookieManager = {
+        set: function(name, value, days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + date.toUTCString();
+            var cookieString = name + "=" + value + ";" + expires + ";path=/;SameSite=Lax";
+            document.cookie = cookieString;
+            logDebug('Cookie definido: ' + name + '=' + value);
+        },
+        
+        get: function(name) {
+            var nameEQ = name + "=";
+            var ca = document.cookie.split(';');
+            for(var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) === ' ') {
+                    c = c.substring(1, c.length);
+                }
+                if (c.indexOf(nameEQ) === 0) {
+                    var value = c.substring(nameEQ.length, c.length);
+                    logDebug('Cookie recuperado: ' + name + '=' + value);
+                    return value;
+                }
+            }
+            logDebug('Cookie não encontrado: ' + name);
+            return null;
+        },
+        
+        delete: function(name) {
+            document.cookie = name + '=; Max-Age=-99999999; path=/';
+            logDebug('Cookie removido: ' + name);
+        }
+    };
+    
+    // Função principal de inicialização
+    function initLGPD() {
+        logDebug('Inicializando LGPD-GTM...');
+        
+        // Criar e injetar CSS primeiro (para evitar FOUC)
+        var style = document.createElement('style');
+        style.id = 'lgpd-gtm-styles';
+        var cssText = `
+            #lgpd-gtm-bar {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                background: ${LGPD_CONFIG.barColor} !important;
+                color: ${LGPD_CONFIG.textColor} !important;
+                padding: 15px 20px !important;
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2) !important;
+                z-index: 2147483647 !important;
+                display: none !important;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+                box-sizing: border-box !important;
+                font-size: 14px !important;
+            }
+            
+            #lgpd-gtm-container {
+                max-width: 1200px !important;
+                margin: 0 auto !important;
+                display: flex !important;
+                flex-wrap: wrap !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 15px !important;
+            }
+            
+            #lgpd-gtm-text {
+                flex: 1 !important;
+                min-width: 300px !important;
+                font-size: 14px !important;
+                line-height: 1.5 !important;
+            }
+            
+            #lgpd-gtm-text strong {
+                color: #1f2f36 !important;
+                font-weight: 800 !important;
+            }
+            
+            #lgpd-gtm-buttons {
+                display: flex !important;
+                gap: 10px !important;
+                flex-shrink: 0 !important;
+            }
+            
+            .lgpd-gtm-btn {
+                padding: 10px 20px !important;
+                border: none !important;
+                border-radius: 5px !important;
+                font-weight: 600 !important;
+                cursor: pointer !important;
+                transition: all 0.3s ease !important;
+                font-size: 14px !important;
+                min-width: 100px !important;
+            }
+            
+            #lgpd-gtm-accept {
+                background-color: ${LGPD_CONFIG.buttonAcceptColor} !important;
+                color: white !important;
+            }
+            
+            #lgpd-gtm-accept:hover {
+                opacity: 0.9 !important;
+                transform: translateY(-1px) !important;
+            }
+            
+            #lgpd-gtm-reject {
+                background-color: #ffffff !important;
+                color: #999999 !important;
+                border: 1px solid #cbcbcb !important;
+            }
+            
+            #lgpd-gtm-reject:hover {
+                opacity: 0.9 !important;
+                transform: translateY(-1px) !important;
+            }
+            
+            #lgpd-gtm-bar.show {
+                display: block !important;
+                animation: lgpdSlideUp 0.5s ease-out !important;
+            }
+            
+            @keyframes lgpdSlideUp {
+                from {
+                    transform: translateY(100%) !important;
+                    opacity: 0 !important;
+                }
+                to {
+                    transform: translateY(0) !important;
+                    opacity: 1 !important;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                #lgpd-gtm-container {
+                    flex-direction: column !important;
+                    text-align: center !important;
+                }
+                #lgpd-gtm-text {
+                    min-width: 100% !important;
+                }
+                #lgpd-gtm-buttons {
+                    width: 100% !important;
+                    justify-content: center !important;
+                }
+                .lgpd-gtm-btn {
+                    min-width: 120px !important;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                #lgpd-gtm-bar {
+                    padding: 12px 15px !important;
+                }
+                #lgpd-gtm-buttons {
+                    flex-direction: column !important;
+                }
+                .lgpd-gtm-btn {
+                    width: 100% !important;
+                }
+            }
+        `;
+        
+        if (style.styleSheet) {
+            style.styleSheet.cssText = cssText;
+        } else {
+            style.appendChild(document.createTextNode(cssText));
+        }
+        document.head.appendChild(style);
+        
+        // Criar HTML da barra LGPD
+        var lgpdHTML = `
+            <div id="lgpd-gtm-bar">
+                <div id="lgpd-gtm-container">
+                    <div id="lgpd-gtm-text">
+                        <strong>🍪 Utilizamos cookies</strong><br>
+                        Nós utilizamos cookies e outras tecnologias semelhantes para melhorar sua experiência, personalizar publicidade e recomendar conteúdo de seu interesse. 
+                        Para mais informações, consulte nossa Política de Privacidade.
+                    </div>
+                    <div id="lgpd-gtm-buttons">
+                        <button id="lgpd-gtm-reject" class="lgpd-gtm-btn" type="button">Não Aceito</button>
+                        <button id="lgpd-gtm-accept" class="lgpd-gtm-btn" type="button">Aceito</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Injetar HTML no body
+        var div = document.createElement('div');
+        div.innerHTML = lgpdHTML;
+        document.body.appendChild(div.firstElementChild);
+        
+        // Referências aos elementos
+        var lgpdBar = document.getElementById('lgpd-gtm-bar');
+        var acceptBtn = document.getElementById('lgpd-gtm-accept');
+        var rejectBtn = document.getElementById('lgpd-gtm-reject');
+        
+        // Verificar se já tem consentimento
+        var existingConsent = CookieManager.get(LGPD_CONFIG.cookieName);
+        
+        if (!existingConsent) {
+            // Mostrar barra imediatamente
+            setTimeout(function() {
+                lgpdBar.classList.add('show');
+                logDebug('Barra LGPD exibida (sem consentimento prévio)');
+                
+                // Disparar evento para GTM - Barra exibida
+                if (window.dataLayer) {
+                    window.dataLayer.push({
+                        'event': 'lgpd_bar_shown',
+                        'lgpd_action': 'bar_displayed',
+                        'lgpd_timestamp': new Date().toISOString()
+                    });
+                    logDebug('Evento GTM: lgpd_bar_shown');
+                }
+            }, 100);
+        } else {
+            // Já tem consentimento
+            logDebug('Consentimento encontrado: ' + existingConsent);
+            
+            if (window.dataLayer) {
+                window.dataLayer.push({
+                    'event': 'lgpd_status',
+                    'lgpd_consent': existingConsent,
+                    'lgpd_timestamp': new Date().toISOString()
+                });
+                logDebug('Evento GTM: lgpd_status');
+            }
+        }
+        
+        // Função para fechar a barra
+        function closeBar() {
+            lgpdBar.style.opacity = '0';
+            lgpdBar.style.transform = 'translateY(100%)';
+            lgpdBar.style.transition = 'all 0.5s ease';
+            
+            setTimeout(function() {
+                lgpdBar.classList.remove('show');
+                lgpdBar.style.cssText = '';
+            }, 500);
+        }
+        
+        // Função para aceitar
+        function handleAccept() {
+            logDebug('Usuário aceitou os cookies');
+            
+            // Salvar cookie de aceitação
+            CookieManager.set(
+                LGPD_CONFIG.cookieName, 
+                'accepted', 
+                LGPD_CONFIG.cookieExpiryDays
+            );
+            
+            // Fechar barra
+            closeBar();
+            
+            // Disparar evento para GTM
+            if (window.dataLayer) {
+                window.dataLayer.push({
+                    'event': 'lgpd_consent',
+                    'lgpd_action': 'accepted',
+                    'lgpd_timestamp': new Date().toISOString()
+                });
+                logDebug('Evento GTM: lgpd_consent (accepted)');
+            }
+            
+            // Disparar evento personalizado para outros scripts
+            var event = new CustomEvent('lgpdConsentChanged', {
+                detail: { consent: 'accepted' }
+            });
+            window.dispatchEvent(event);
+        }
+        
+        // Função para rejeitar
+        function handleReject() {
+            logDebug('Usuário rejeitou os cookies');
+            
+            // Não salvar cookie de aceitação
+            CookieManager.delete(LGPD_CONFIG.cookieName);
+            
+            // Fechar barra
+            closeBar();
+            
+            // Disparar evento para GTM
+            if (window.dataLayer) {
+                window.dataLayer.push({
+                    'event': 'lgpd_consent',
+                    'lgpd_action': 'rejected',
+                    'lgpd_timestamp': new Date().toISOString()
+                });
+                logDebug('Evento GTM: lgpd_consent (rejected)');
+            }
+            
+            // Disparar evento personalizado para outros scripts
+            var event = new CustomEvent('lgpdConsentChanged', {
+                detail: { consent: 'rejected' }
+            });
+            window.dispatchEvent(event);
+        }
+        
+        // Adicionar event listeners
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', handleAccept);
+            logDebug('Event listener adicionado: botão Aceitar');
+        }
+        
+        if (rejectBtn) {
+            rejectBtn.addEventListener('click', handleReject);
+            logDebug('Event listener adicionado: botão Rejeitar');
+        }
+        
+        // Adicionar suporte para teclado (acessibilidade)
+        lgpdBar.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                handleReject();
+            }
+        });
+        
+        logDebug('LGPD-GTM inicializado com sucesso');
+    }
+    
+    // Estratégia de carregamento otimizada
+    function startLGPD() {
+        // Verificar se o DOM está pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                logDebug('DOM completamente carregado - iniciando LGPD');
+                initLGPD();
+            });
+        } else {
+            // DOM já está carregado
+            logDebug('DOM já carregado - iniciando LGPD imediatamente');
+            initLGPD();
+        }
+    }
+    
+    // Expor função global para GTM
+    window.getLGDPConsent = function() {
+        return CookieManager.get(LGPD_CONFIG.cookieName);
+    };
+    
+    // Expor função para resetar consentimento (útil para testes)
+    window.resetLGDPConsent = function() {
+        CookieManager.delete(LGPD_CONFIG.cookieName);
+        logDebug('Consentimento LGPD resetado');
+        return true;
+    };
+    
+    // Iniciar imediatamente
+    logDebug('Script LGPD-GTM carregado. Iniciando processo...');
+    startLGPD();
+    
+})();
+</script>
+
+
+<!-- CUSTOM CSS -->
+
+<style>
+  body > div.render-container.render-route-store-search-department > div > div.vtex-store__template.bg-base > div > div:nth-child(6) > div > div > section > div.relative.justify-center.flex > div > div.vtex-flex-layout-0-x-flexRow.vtex-flex-layout-0-x-flexRow--search-content > div > div:nth-child(2) > div > div:nth-child(1) {
+    height: auto !important;
+}
+  
+  body > div.render-container.render-route-store-search-category > div > div.vtex-store__template.bg-base > div > div:nth-child(6) > div > div > section > div.relative.justify-center.flex > div > div.vtex-flex-layout-0-x-flexRow.vtex-flex-layout-0-x-flexRow--search-content > div > div:nth-child(2) > div > div:nth-child(1) {
+    height: auto!important;
+  }
+  
+    body > div.render-container.render-route-store-search-subcategory > div > div.vtex-store__template.bg-base > div > div:nth-child(6) > div > div > section > div.relative.justify-center.flex > div > div.vtex-flex-layout-0-x-flexRow.vtex-flex-layout-0-x-flexRow--search-content > div > div:nth-child(2) > div > div:nth-child(1) {
+    height: auto!important;
+  }
+  
+      body > div.render-container.render-route-store-search > div > div.vtex-store__template.bg-base > div > div:nth-child(6) > div > div > section > div.relative.justify-center.flex > div > div.vtex-flex-layout-0-x-flexRow.vtex-flex-layout-0-x-flexRow--search-content > div > div:nth-child(2) > div > div:nth-child(1) {
+    height: auto!important;
+  }
+  
+  
+  
+  .vtex-product-specification-badges-0-x-groupContainer.inline-flex.flex-column.ma2 {
+    display: none;
+}
+  
+  .vtex-flex-layout-0-x-flexRowContent--pre-venda .vtex-product-specification-badges-0-x-groupContainer.inline-flex.flex-column.ma2 {
+    display: block;
+    position: relative;
+}
+  
+  
+  span.vtex-product-specification-badges-0-x-badgeText.vtex-product-specification-badges-0-x-badgeText--27-de-fev.ma3.t-body.c-muted-1.tc {
+    color: white;
+    font-size: 12px;
+    width: 130px;
+    height: 11px;
+    text-align: center;
+    background: #c00913;
+    border-radius: 4px;
+    padding: 6px 0px;
+}
+  
+  .vtex-flex-layout-0-x-flexRow.vtex-flex-layout-0-x-flexRow--pre-venda {
+    top: 7%;
+    position: absolute;
+    z-index: 999999 !important;
+    display: block;
+    background: transparent;
+}
+  
+  .vtex-product-specification-badges-0-x-badgeContainer.vtex-product-specification-badges-0-x-badgeContainer--pre-venda {
+    background: transparent;
+}
+  
+  .vtex-product-specification-badges-0-x-badgeContainer--pre-venda span:before {
+    content: "Pré-Venda: ";
+}
+  
+  
+  
+  
+  
+  
+  
+  
+  @media only screen and (max-width: 700px) {
+    .vtex-wish-list-1-x-wishlistIconContainer button {
+    margin-left: 0%;
+    }
+    
+/* Ajustando os blocos pai para 80% e 20% */
+.vtex-flex-layout-0-x-flexRowContent--name-and-wishlist > div:first-child {
+  width: 80% !important;
+  flex: 0 0 80% !important;
+  max-width: 80% !important;
+}
+
+.vtex-flex-layout-0-x-flexRowContent--name-and-wishlist > div:last-child {
+  width: 20% !important;
+  flex: 0 0 20% !important;
+  max-width: 20% !important;
+}
+
+/* Ajustando o botão do wishlist para ocupar todo o espaço disponível */
+.vtex-wish-list-1-x-wishlistIconContainer--add-to-wishlist-shelf {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+
+.vtex-wish-list-1-x-wishlistIconContainer--add-to-wishlist-shelf button {
+  margin-left: auto !important;
+}
+    
+    .vtex-slider-layout-0-x-slideChildrenContainer--shelf button.vtex-button.bw1.ba.fw5.v-mid.relative.pa0.lh-solid.br2.min-h-regular.t-action.bg-transparent.b--transparent.c-action-primary.hover-b--transparent.hover-bg-action-secondary.hover-b--action-secondary.pointer {
+    display: none;
+}
+    
+     .vtex-flex-layout-0-x-flexRow.vtex-flex-layout-0-x-flexRow--name-and-wishlist {
+    margin-top: 100px;
+  }
+
+    
+    
+   }
+</style>
+
+
+<!-- WHATSAPP FLUTUANTE -->
+
+<script>
+(function() {
+    // Criar e injetar o CSS
+    var css = '#whatsapp-button-container {' +
+              'position: fixed;' +
+              'bottom: 30px;' +
+              'right: 30px;' +
+              'width: 70px;' +
+              'height: 70px;' +
+              'z-index: 999999;' +
+              '}' +
+              
+              '#whatsapp-button-container a {' +
+              'display: block;' +
+              'width: 100%;' +
+              'height: 100%;' +
+              'border-radius: 50%;' +
+              'background-color: #25d366;' +
+              'box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);' +
+              'display: flex;' +
+              'align-items: center;' +
+              'justify-content: center;' +
+              'position: relative;' +
+              'transition: all 0.3s ease;' +
+              'text-decoration: none;' +
+              'cursor: pointer;' +
+              '}' +
+              
+              '#whatsapp-button-container a:hover {' +
+              'transform: scale(1.05);' +
+              'box-shadow: 0 6px 25px rgba(37, 211, 102, 0.5);' +
+              '}' +
+              
+              '#whatsapp-button-container a:active {' +
+              'transform: scale(0.95);' +
+              '}' +
+              
+              '.whatsapp-icon {' +
+              'font-size: 36px;' +
+              'color: white;' +
+              'z-index: 10;' +
+              'font-family: Arial, sans-serif;' +
+              '}' +
+              
+              '/* Efeito de ondas pulsantes */' +
+              '.whatsapp-wave {' +
+              'position: absolute;' +
+              'width: 100%;' +
+              'height: 100%;' +
+              'border-radius: 50%;' +
+              'background-color: rgba(37, 211, 102, 0.4);' +
+              'animation: whatsapp-wave-animation 2s infinite;' +
+              'z-index: 1;' +
+              'top: 0;' +
+              'left: 0;' +
+              '}' +
+              
+              '.whatsapp-wave-2 {' +
+              'animation-delay: 0.5s;' +
+              '}' +
+              
+              '.whatsapp-wave-3 {' +
+              'animation-delay: 1s;' +
+              '}' +
+              
+              '@keyframes whatsapp-wave-animation {' +
+              '0% {' +
+              'transform: scale(0.8);' +
+              'opacity: 0.8;' +
+              '}' +
+              '100% {' +
+              'transform: scale(1.5);' +
+              'opacity: 0;' +
+              '}' +
+              '}' +
+              
+              '/* Responsividade */' +
+              '@media (max-width: 768px) {' +
+              '#whatsapp-button-container {' +
+              'bottom: 20px;' +
+              'right: 20px;' +
+              'width: 60px;' +
+              'height: 60px;' +
+              '}' +
+              
+              '.whatsapp-icon {' +
+              'font-size: 32px;' +
+              '}' +
+              '}' +
+              
+              '@media (max-width: 480px) {' +
+              '#whatsapp-button-container {' +
+              'bottom: 15px;' +
+              'right: 15px;' +
+              'width: 55px;' +
+              'height: 55px;' +
+              '}' +
+              
+              '.whatsapp-icon {' +
+              'font-size: 28px;' +
+              '}' +
+              '}';
+    
+    // Adicionar CSS ao documento
+    var style = document.createElement('style');
+    style.type = 'text/css';
+    
+    // Para navegadores antigos
+    if (style.styleSheet) {
+        style.styleSheet.cssText = css;
+    } else {
+        style.appendChild(document.createTextNode(css));
+    }
+    
+    document.head.appendChild(style);
+    
+    // Criar o elemento do botão
+    var buttonContainer = document.createElement('div');
+    buttonContainer.id = 'whatsapp-button-container';
+    
+    var link = document.createElement('a');
+    link.href = 'https://wa.me/5579991293236?text=Ol%C3%A1!%20Acessei%20o%20e-commerce%20da%20Escariz%20e%20preciso%20de%20ajuda.';
+    link.target = '_blank';
+    link.setAttribute('rel', 'noopener noreferrer');
+    
+    // Criar as ondas
+    var wave1 = document.createElement('div');
+    wave1.className = 'whatsapp-wave';
+    
+    var wave2 = document.createElement('div');
+    wave2.className = 'whatsapp-wave whatsapp-wave-2';
+    
+    var wave3 = document.createElement('div');
+    wave3.className = 'whatsapp-wave whatsapp-wave-3';
+    
+    // Criar o ícone - versão SVG para não depender de fontes externas
+    var iconSvg = document.createElement('div');
+    iconSvg.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" style="width:60%;height:60%;fill:white; margin-left: 13px;margin-top: 9px;"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>';
+    iconSvg.className = 'whatsapp-icon';
+    
+    // Montar a estrutura
+    link.appendChild(wave1);
+    link.appendChild(wave2);
+    link.appendChild(wave3);
+    link.appendChild(iconSvg);
+    buttonContainer.appendChild(link);
+    
+    // Adicionar ao corpo do documento
+    document.body.appendChild(buttonContainer);
+    
+    // Adicionar interatividade
+    link.onclick = function() {
+        this.style.transform = 'scale(0.9)';
+        var self = this;
+        setTimeout(function() {
+            self.style.transform = '';
+        }, 150);
+    };
+    
+    var waves = [wave1, wave2, wave3];
+    
+    link.onmouseenter = function() {
+        for (var i = 0; i < waves.length; i++) {
+            waves[i].style.animationPlayState = 'paused';
+        }
+    };
+    
+    link.onmouseleave = function() {
+        for (var i = 0; i < waves.length; i++) {
+            waves[i].style.animationPlayState = 'running';
+        }
+    };
+    
+    // Log para depuração
+    console.log('Botão WhatsApp flutuante carregado com sucesso');
+    
+})();
+</script>
