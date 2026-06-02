@@ -1,136 +1,423 @@
-<link rel="icon" type="image/x-icon" href="https://lojaportssar.vteximg.com.br/arquivos/Portssar96x96.ico?v=637061381926030000" />
+<link rel="icon" type="image/x-icon"
+  href="https://lojaportssar.vteximg.com.br/arquivos/Portssar96x96.ico?v=637061381926030000" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+  rel="stylesheet">
 
 <!-- pixel/body.html -->
 
 <script>
-(function () {
-var PIX_DISCOUNT = 0.07;
-var POLL_INTERVAL = 500;
-var MAX_ATTEMPTS = 60;
+  (function () {
+    var PIX_DISCOUNT = 0.07;
+    var POLL_INTERVAL = 500;
+    var MAX_ATTEMPTS = 60;
 
-function parseVtexPrice(container) {
-if (!container) return null;
-var integerNodes = container.querySelectorAll('.vtex-product-price-1-x-currencyInteger');
-var fractionNode = container.querySelector('.vtex-product-price-1-x-currencyFraction');
-if (!integerNodes || !integerNodes.length) return null;
-var intStr = Array.from(integerNodes).map(function (n) { return (n.textContent||'').replace(/\D/g,''); }).join('');
-var fracStr = fractionNode ? (fractionNode.textContent||'').replace(/\D/g,'') : '00';
-if (!intStr) return null;
-var price = parseFloat(intStr + '.' + (fracStr || '00'));
-return isNaN(price) ? null : price;
-}
+    function parseVtexPrice(container) {
+      if (!container) return null;
+      var integerNodes = container.querySelectorAll('.vtex-product-price-1-x-currencyInteger');
+      var fractionNode = container.querySelector('.vtex-product-price-1-x-currencyFraction');
+      if (!integerNodes || !integerNodes.length) return null;
+      var intStr = Array.from(integerNodes).map(function (n) {
+        return (n.textContent || '').replace(/\D/g, '');
+      }).join('');
+      var fracStr = fractionNode ? (fractionNode.textContent || '').replace(/\D/g, '') : '00';
+      if (!intStr) return null;
+      var price = parseFloat(intStr + '.' + (fracStr || '00'));
+      return isNaN(price) ? null : price;
+    }
 
-function formatBRL(value) {
-return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+    function formatBRL(value) {
+      return value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
 
-function createPixElement(price, className) {
-var el = document.createElement('span');
-el.className = className;
-el.style.cssText = 'font-size:0.875rem;color:#333;font-weight:500;display:block;';
-el.innerHTML = 'ou por <strong style="color:#C0130F;">R$&nbsp;' + formatBRL(price) + '</strong> à vista no <strong style="color:#C0130F;">Boleto ou PIX</strong>';
-return el;
-}
+    function createPixElement(price, className) {
+      var el = document.createElement('span');
+      el.className = className;
+      el.style.cssText = 'font-size:0.875rem;color:#333;font-weight:500;display:block;';
+      el.innerHTML = 'ou por <strong style="color:#C0130F;">R$&nbsp;' + formatBRL(price) +
+        '</strong> à vista no <strong style="color:#C0130F;">Boleto ou PIX</strong>';
+      return el;
+    }
 
-function getPriceContainer(card) {
-if (!card) return null;
-return card.querySelector('.vtex-product-price-1-x-spotPriceValue .vtex-product-price-1-x-currencyContainer') ||
-card.querySelector('.vtex-product-price-1-x-sellingPriceValue .vtex-product-price-1-x-currencyContainer') ||
-card.querySelector('.vtex-product-price-1-x-currencyContainer');
-}
+    function getPriceContainer(card) {
+      if (!card) return null;
+      return card.querySelector('.vtex-product-price-1-x-spotPriceValue .vtex-product-price-1-x-currencyContainer') ||
+        card.querySelector('.vtex-product-price-1-x-sellingPriceValue .vtex-product-price-1-x-currencyContainer') ||
+        card.querySelector('.vtex-product-price-1-x-currencyContainer');
+    }
 
-function getPixRow(card) {
-if (!card) return null;
-return card.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price') ||
-card.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price-pdp') ||
-card.querySelector('.vtex-flex-layout-0-x-flexRowContent--pixPrice') ||
-card.querySelector('.vtex-flex-layout-0-x-flexRowContent--hasntBestPrice'); // fallback prudente
-}
+    function getPixRow(card) {
+      if (!card) return null;
+      return card.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price') ||
+        card.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price-pdp') ||
+        card.querySelector('.vtex-flex-layout-0-x-flexRowContent--pixPrice') ||
+        card.querySelector('.vtex-flex-layout-0-x-flexRowContent--hasntBestPrice'); // fallback prudente
+    }
 
-function alreadyHasPix(pixRow) {
-if (!pixRow) return false;
-return pixRow.querySelector('.custom-pix-price, .custom-pix-price-pdp') !== null;
-}
+    function alreadyHasPix(pixRow) {
+      if (!pixRow) return false;
+      return pixRow.querySelector('.custom-pix-price, .custom-pix-price-pdp') !== null;
+    }
 
-function injectPixToCard(card, isPDP) {
-if (!card) return;
-var pixRow = getPixRow(card);
-if (!pixRow) return;
-if (alreadyHasPix(pixRow)) return; // evita duplicação
+    function injectPixToCard(card, isPDP) {
+      if (!card) return;
+      var pixRow = getPixRow(card);
+      if (!pixRow) return;
+      if (alreadyHasPix(pixRow)) return; // evita duplicação
 
-var priceContainer = getPriceContainer(card);
-if (!priceContainer) return;
-var basePrice = parseVtexPrice(priceContainer);
-if (!basePrice) return;
-var pixPrice = basePrice * (1 - PIX_DISCOUNT);
+      var priceContainer = getPriceContainer(card);
+      if (!priceContainer) return;
+      var basePrice = parseVtexPrice(priceContainer);
+      if (!basePrice) return;
+      var pixPrice = basePrice * (1 - PIX_DISCOUNT);
 
-var className = isPDP ? 'custom-pix-price-pdp' : 'custom-pix-price';
-var el = createPixElement(pixPrice, className);
-pixRow.appendChild(el);
-}
+      var className = isPDP ? 'custom-pix-price-pdp' : 'custom-pix-price';
+      var el = createPixElement(pixPrice, className);
+      pixRow.appendChild(el);
+    }
 
-function processShelf() {
-var cards = document.querySelectorAll('.vtex-product-summary-2-x-container');
-cards.forEach(function (card) {
-injectPixToCard(card, false);
-});
-}
+    function processShelf() {
+      var cards = document.querySelectorAll('.vtex-product-summary-2-x-container');
+      cards.forEach(function (card) {
+        injectPixToCard(card, false);
+      });
+    }
 
-function processPDP() {
-// PDP pode não ter .vtex-product-summary-2-x-container; procuramos o pixRow global da PDP
-var pixRow = document.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price-pdp') || document.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price');
-if (!pixRow) return;
-if (alreadyHasPix(pixRow)) return;
+    function processPDP() {
+      // PDP pode não ter .vtex-product-summary-2-x-container; procuramos o pixRow global da PDP
+      var pixRow = document.querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price-pdp') || document
+        .querySelector('.vtex-flex-layout-0-x-flexRowContent--pix-price');
+      if (!pixRow) return;
+      if (alreadyHasPix(pixRow)) return;
 
-// procurar o price container mais próximo (PDP normalmente está fora do card)
-var priceContainer = document.querySelector('.vtex-product-price-1-x-sellingPriceValue .vtex-product-price-1-x-currencyContainer') ||
-document.querySelector('.vtex-product-price-1-x-spotPriceValue .vtex-product-price-1-x-currencyContainer') ||
-document.querySelector('.vtex-product-price-1-x-currencyContainer');
-if (!priceContainer) return;
-var basePrice = parseVtexPrice(priceContainer);
-if (!basePrice) return;
-var pixPrice = basePrice * (1 - PIX_DISCOUNT);
+      // procurar o price container mais próximo (PDP normalmente está fora do card)
+      var priceContainer = document.querySelector(
+          '.vtex-product-price-1-x-sellingPriceValue .vtex-product-price-1-x-currencyContainer') ||
+        document.querySelector('.vtex-product-price-1-x-spotPriceValue .vtex-product-price-1-x-currencyContainer') ||
+        document.querySelector('.vtex-product-price-1-x-currencyContainer');
+      if (!priceContainer) return;
+      var basePrice = parseVtexPrice(priceContainer);
+      if (!basePrice) return;
+      var pixPrice = basePrice * (1 - PIX_DISCOUNT);
 
-var el = createPixElement(pixPrice, 'custom-pix-price-pdp');
-pixRow.appendChild(el);
-}
+      var el = createPixElement(pixPrice, 'custom-pix-price-pdp');
+      pixRow.appendChild(el);
+    }
 
-function processAll() {
-processShelf();
-processPDP();
-}
+    function processAll() {
+      processShelf();
+      processPDP();
+    }
 
-function startPolling() {
-var attempts = 0;
-var interval = setInterval(function () {
-attempts++;
-processAll();
-if (attempts >= MAX_ATTEMPTS) clearInterval(interval);
-}, POLL_INTERVAL);
-}
+    function startPolling() {
+      var attempts = 0;
+      var interval = setInterval(function () {
+        attempts++;
+        processAll();
+        if (attempts >= MAX_ATTEMPTS) clearInterval(interval);
+      }, POLL_INTERVAL);
+    }
 
-function startObserver() {
-if (!document.body) return;
-var timeoutId = null;
-var observer = new MutationObserver(function () {
-if (timeoutId) clearTimeout(timeoutId);
-timeoutId = setTimeout(function () { processAll(); timeoutId = null; }, 120); // debounce leve
-});
-observer.observe(document.body, { childList: true, subtree: true });
-}
+    function startObserver() {
+      if (!document.body) return;
+      var timeoutId = null;
+      var observer = new MutationObserver(function () {
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(function () {
+          processAll();
+          timeoutId = null;
+        }, 120); // debounce leve
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
 
-function init() {
-processAll();
-startPolling();
-startObserver();
-}
+    function init() {
+      processAll();
+      startPolling();
+      startObserver();
+    }
 
-if (document.readyState === 'loading') {
-document.addEventListener('DOMContentLoaded', init);
-} else {
-init();
-} })();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+
+</script>
+
+
+
+
+<!-- PopUp -->
+
+<style>
+  .portssar-tradein-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 999999;
+  }
+
+  .portssar-tradein-overlay.is-active {
+    display: flex;
+  }
+
+  .portssar-tradein-popup {
+    position: relative;
+    width: 100%;
+    max-width: 860px;
+    background: #ffffff;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    font-family: Arial, sans-serif;
+  }
+
+  .portssar-tradein-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(227 227 227 / 90%);
+    color: #111;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .portssar-tradein-media {
+    min-height: 420px;
+    background: #f4f4f4;
+  }
+
+  .portssar-tradein-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .portssar-tradein-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 42px 38px;
+    gap: 16px;
+    color: #111111;
+  }
+
+  .portssar-tradein-badge {
+    display: inline-flex;
+    width: fit-content;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: #C0130F;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portssar-tradein-title {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.15;
+    font-weight: 400;
+  }
+
+  .portssar-tradein-title strong {
+    font-weight: 700;
+  }
+
+  .portssar-tradein-text {
+    margin: 0;
+    font-size: 15px;
+    text-align: justify;
+    line-height: 1.6;
+    color: #333333;
+  }
+
+  .portssar-tradein-text strong {
+    font-weight: 700;
+    color: #111;
+  }
+
+  .portssar-tradein-highlights {
+    margin: 0;
+    padding: 0 0 0 20px;
+    list-style: disc;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .portssar-tradein-highlights li {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #222222;
+    font-weight: 600;
+  }
+
+  .portssar-tradein-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-width: 160px;
+    padding: 14px 22px;
+    border-radius: 10px;
+    background: #C0130F;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+  }
+
+  .portssar-tradein-button:hover {
+    background: #930c08;
+  }
+
+  @media (max-width: 768px) {
+    .portssar-tradein-popup {
+      grid-template-columns: 1fr;
+      max-width: 420px;
+    }
+
+    .portssar-tradein-media {
+      max-height: 85px !important;
+      min-height: 245px;
+    }
+
+      .portssar-tradein-media img {
+    object-position: 0px -35px;
+  }
+
+    .portssar-tradein-content {
+      padding: 28px 22px 24px;
+    }
+
+    .portssar-tradein-title {
+      font-size: 22px;
+    }
+
+    .portssar-tradein-text {
+      font-size: 15px;
+      max-width: 100%;
+    }
+
+    .portssar-tradein-highlights li {
+      font-size: 14px;
+    }
+
+    .portssar-tradein-button {
+      width: 100%;
+    }
+  }
+
+</style>
+
+<div class="portssar-tradein-overlay" id="portssarTradeInOverlay" aria-hidden="true">
+  <div class="portssar-tradein-popup" role="dialog" aria-modal="true" aria-labelledby="portssarTradeInTitle">
+    <button class="portssar-tradein-close" id="portssarTradeInClose" aria-label="Fechar popup" type="button">
+      ×
+    </button>
+
+    <div class="portssar-tradein-media">
+      <img src="https://i.ibb.co/ksbsKyr0/popup-portssar.png" alt="Campanha Panasonic Trade In na Portssar" />
+    </div>
+
+    <div class="portssar-tradein-content">
+      <span class="portssar-tradein-badge">Panasonic Trade In</span>
+
+      <h2 class="portssar-tradein-title" id="portssarTradeInTitle">
+        Sua <strong>câmera usada</strong> pode virar
+        <strong>upgrade LUMIX / Panasonic</strong>
+      </h2>
+
+      <p class="portssar-tradein-text">
+        <strong>Faça sua avaliação</strong> na Portssar e
+        <strong>aproveite condições especiais</strong> na compra de uma nova
+        câmera ou objetiva LUMIX / Panasonic.
+      </p>
+
+      <ul class="portssar-tradein-highlights">
+        <li>15% OFF na câmera ou objetiva LUMIX escolhida</li>
+        <li>3 anos de garantia oficial Panasonic</li>
+      </ul>
+
+      <a class="portssar-tradein-button" href="https://www.lojaportssar.com.br/162?map=productClusterIds">
+        Ver produtos elegíveis
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var overlay = document.getElementById('portssarTradeInOverlay');
+    var closeBtn = document.getElementById('portssarTradeInClose');
+    var alreadyClosed = false;
+
+    function openPopup() {
+      if (alreadyClosed || !overlay) return;
+      overlay.classList.add('is-active');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePopup() {
+      if (!overlay) return;
+      overlay.classList.remove('is-active');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      alreadyClosed = true;
+    }
+
+    setTimeout(openPopup, 3000);
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closePopup);
+    }
+
+    if (overlay) {
+      overlay.addEventListener('click', function (event) {
+        if (event.target === overlay) {
+          closePopup();
+        }
+      });
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        closePopup();
+      }
+    });
+  })();
+
 </script>
